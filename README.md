@@ -374,15 +374,58 @@ Ce module est volontairement simple : il isole le bucket audio du bucket sources
 
 ### 5.7 Transcription — AWS Transcribe (bonus)
 
-**Choix :** AWS Transcribe pour la transcription audio-texte
+**Choix :** AWS Transcribe pour la transcription audio-texte automatique (Speech-to-Text).
 
-| Critère | AWS Transcribe | Google Speech-to-Text | Azure Cognitive Speech |
-|---|---|---|---|
-| Intégration AWS | Native | Via API externe | Via API externe |
-| Langues supportées | 100+ | 125+ | 100+ |
-| Facturation | Par minute audio | Par 15 secondes | Par heure |
+#### Comparaison détaillée des services équivalents
 
-**Justification :** AWS Transcribe s'intègre naturellement avec S3 : les fichiers audio sont déposés dans un bucket, les résultats récupérés via l'API. Aucune infrastructure supplémentaire n'est nécessaire.
+| Critère | AWS Transcribe | Google Speech-to-Text | Azure Cognitive Speech | OpenAI Whisper (open-source) |
+|---|---|---|---|---|
+| **Intégration cloud** | Native AWS (S3, IAM) | GCP native | Azure native | Auto-hébergé / API |
+| **Langues supportées** | 100+ | 125+ | 100+ | 99+ |
+| **Français** | Oui (`fr-FR`) | Oui (excellente qualité) | Oui | Oui (très bonne qualité) |
+| **Mode de fonctionnement** | Asynchrone (fichier S3) | Synchrone et asynchrone | Synchrone et asynchrone | Synchrone |
+| **Formats audio supportés** | MP3, MP4, WAV, FLAC, OGG | FLAC, LINEAR16, MP3, OGG | WAV, MP3, OGG, FLAC | MP3, MP4, WAV, FLAC, OGG |
+| **Taille max fichier** | 2 heures / 2 GB | 60 min (asynchrone) | 60 min | Illimité (local) |
+| **Facturation** | $0.024/min (premiers 250k min/mois) | $0.016/min (< 1M min) | $1.00/heure (~$0.017/min) | Gratuit (coût compute) |
+| **Diarisation** (identification des locuteurs) | Oui | Oui | Oui | Non (nativement) |
+| **Vocabulaire personnalisé** | Oui | Oui | Oui | Non |
+| **Redaction PII** (données sensibles) | Oui | Non natif | Oui | Non |
+| **Conformité RGPD** | Oui (régions EU) | Oui | Oui | Oui (données locales) |
+| **Latence** | Quelques minutes | Secondes à minutes | Secondes à minutes | Secondes (local) |
+
+#### Fonctionnement d'AWS Transcribe dans ce projet
+
+```
+[Utilisateur] → upload fichier audio → [transcribe.php]
+                                              │
+                                              ▼
+                                    [S3 : tp-devops-transcribe-audio-2026]
+                                              │
+                                              ▼
+                                    [AWS Transcribe API]
+                                    (job asynchrone)
+                                              │
+                                              ▼
+                                    [Résultat JSON dans S3]
+                                              │
+                                              ▼
+                                    [transcribe.php affiche la transcription]
+```
+
+Le traitement est **asynchrone** : AWS Transcribe analyse le fichier audio stocké dans S3, crée un job de transcription et retourne les résultats en JSON une fois le traitement terminé (quelques secondes à quelques minutes selon la durée de l'audio).
+
+#### Pourquoi AWS Transcribe plutôt qu'un concurrent ?
+
+**vs Google Speech-to-Text :**
+Google offre une meilleure précision sur le français et une facturation légèrement moins chère. Cependant, l'intégration dans une architecture 100% AWS aurait nécessité une authentification croisée inter-cloud (GCP credentials dans l'environnement AWS), ce qui ajoute de la complexité et des risques de sécurité.
+
+**vs Azure Cognitive Speech :**
+Même argument que Google — intégration inter-cloud complexe. La facturation à l'heure d'Azure peut aussi être moins économique pour des fichiers courts.
+
+**vs OpenAI Whisper :**
+Whisper est open-source et très précis (notamment en français), mais nécessite d'héberger le modèle sur une instance EC2 avec GPU, ce qui augmente significativement les coûts et la complexité opérationnelle.
+
+**Conclusion :** AWS Transcribe est le choix naturel dans une architecture AWS. L'intégration native avec S3 et IAM évite toute configuration d'authentification supplémentaire, et le modèle de facturation à la minute est adapté à une utilisation ponctuelle.
 
 ---
 

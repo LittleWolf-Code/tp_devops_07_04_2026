@@ -1,0 +1,37 @@
+# Terraform state
+*.tfstate
+*.tfstate.backup
+
+# Terraform variables (can contain secrets)
+*.tfvars
+
+# Terraform working directory
+.terraform/
+.terraform.lock.hcl
+
+# SSH keys
+keys/
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Terraform override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Terraform binary
+terraform.exe
+terraform
+
+# AWS credentials (contient les clés de session)
+set-credentials.sh
+set-credentials.ps1
+
+# IDE
+.idea/
+.vscode/
+
+.claude
